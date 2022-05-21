@@ -260,12 +260,16 @@ static inline void write64_lo_hi(u64 addr, u64 val)
 
 static inline void breakpoint(u64 addr)
 {
-    u64 data;
-    __asm__ volatile("msr\tDBGBVR0_EL1, %1\n"
+    u64 dbgbcr;
+    u64 mdscr;
+    __asm__ volatile("msr\tDBGBVR0_EL1, %2\n"
                      "\tmrs\t%0, DBGBCR0_EL1\n"
                      "\torr\t%0, %0, 0x1\n"
                      "\tmsr\tDBGBCR0_EL1, %0\n"
-                     : "=&r"(data)
+                     "\tmov\t%1, 0xa000\n"
+                     "\tmsr\tMDSCR_EL1, %1\n"
+                     "\tmsr\tDAIFclr, #8\n"
+                     : "=&r"(dbgbcr), "=&r"(mdscr)
                      : "r"(addr)
                      : "memory");
 }

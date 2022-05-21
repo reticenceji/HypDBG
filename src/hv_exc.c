@@ -61,6 +61,8 @@ void hv_exc_proxy(struct exc_info *ctx, uartproxy_boot_reason_t reason, u32 type
         .code = type,
         .info = ctx,
     };
+    
+    print_regs(ctx->regs, 0);
 
     hv_wdt_suspend();
     int ret = uartproxy_run(&start);
@@ -363,6 +365,18 @@ void hv_exc_sync(struct exc_info *ctx)
                 break;
             }
             break;
+        case ESR_EC_BKPT_LOWER:
+            printf("EC = %d\n", ec);
+            printf("breakpoint exception lower\n");
+            break;
+        case ESR_EC_BKPT:
+            printf("EC = %d\n", ec);
+            printf("breakpoint exception\n");
+            break;
+        default:
+            printf("EC = %d\n", ec);
+            printf("other sync exception\n");
+
     }
 
     if (handled) {
