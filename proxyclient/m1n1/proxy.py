@@ -496,6 +496,7 @@ class M1N1Proxy(Reloadable):
     P_WRITEREAD32 = 0x115
     P_WRITEREAD16 = 0x116
     P_WRITEREAD8 = 0x117
+    P_BKPT = 0x118
 
     P_MEMCPY64 = 0x200
     P_MEMCPY32 = 0x201
@@ -821,6 +822,10 @@ class M1N1Proxy(Reloadable):
         return self.request(self.P_WRITEREAD16, addr, data)
     def writeread8(self, addr, data):
         return self.request(self.P_WRITEREAD8, addr, data)
+    def bp(self, addr):
+        '''set a breakpoint on guest virtual address'''
+        addr = (addr | 3) - 3
+        return self.request(self.P_BKPT, addr);
 
     def memcpy64(self, dst, src, size):
         if src & 7 or dst & 7:

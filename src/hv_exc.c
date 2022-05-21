@@ -321,7 +321,8 @@ void hv_exc_sync(struct exc_info *ctx)
     hv_exc_entry(ctx);
     bool handled = false;
     u32 ec = FIELD_GET(ESR_EC, ctx->esr);
-
+    u32 iss = FIELD_GET(ESR_ISS,ctx->esr);
+    u64 count = 0;
     switch (ec) {
         case ESR_EC_DABORT_LOWER:
             hv_wdt_breadcrumb('D');
@@ -337,6 +338,29 @@ void hv_exc_sync(struct exc_info *ctx)
                 case ESR_ISS_IMPDEF_MSR:
                     handled = hv_handle_msr(ctx, ctx->afsr1);
                     break;
+            }
+            break;
+        case ESR_EC_HVC:
+            ctx->elr -= 4;
+            switch (iss)
+            {
+            case 0x20:
+                count++;
+                if(count%100000==0)
+                    printf("hhhhhh   %ld\n",count);
+                u64 x1 = ctx->regs[1];
+                u64 x2 = x1 | 2; 
+                ctx->regs[2] = x2;
+                handled = true;
+                break;
+            case 0x21:
+                while(1)
+                {
+                    printf("hhhhhhhhhhhhhhhhhhhhhhhhh\n");
+                }
+                break;
+            default:
+                break;
             }
             break;
     }

@@ -212,6 +212,10 @@ int proxy_process(ProxyRequest *request, ProxyReply *reply)
             exc_guard = GUARD_MARK;
             reply->retval = writeread8(request->args[0], request->args[1]);
             break;
+        case P_BKPT:
+            exc_guard = GUARD_MARK;
+            breakpoint(request->args[0]);
+            break;
 
         case P_MEMCPY64:
             exc_guard = GUARD_RETURN;
