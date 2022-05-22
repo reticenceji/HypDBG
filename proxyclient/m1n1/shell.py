@@ -9,6 +9,7 @@ from .proxyutils import *
 from .utils import *
 from . import sysreg
 from inspect import isfunction, signature
+from .debugger import debugger
 
 __all__ = ["ExitConsole", "run_shell"]
 
@@ -118,6 +119,7 @@ def help_cmd(arg=None):
 #locals is a dictionary for constructing the
 # InteractiveConsole with. It adds in the callables
 # in proxy utils iface and sysreg into locals
+@debugger
 def run_shell(locals, msg=None, exitmsg=None):
     saved_display = sys.displayhook
     try:
