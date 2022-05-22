@@ -368,10 +368,17 @@ void hv_exc_sync(struct exc_info *ctx)
         case ESR_EC_BKPT_LOWER:
             printf("EC = %d\n", ec);
             printf("breakpoint exception lower\n");
+            // flush_and_reboot();
             break;
         case ESR_EC_BKPT:
             printf("EC = %d\n", ec);
             printf("breakpoint exception\n");
+            // flush_and_reboot();
+            break;
+        case ESR_EC_BRK:
+            printf("EC = %d\n", ec);
+            printf("BRK exception\n");
+            // flush_and_reboot();
             break;
         default:
             printf("EC = %d\n", ec);

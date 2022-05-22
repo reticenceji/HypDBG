@@ -723,6 +723,7 @@ class HV(Reloadable):
         # not sure why MDSCR_EL1.SS needs to be disabled here but otherwise
         # if also SPSR.SS=0 no instruction will be executed after eret
         # and instead a debug exception is generated again
+        print("STEPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
         self.u.msr(MDSCR_EL1, MDSCR(MDE=1).value)
 
         # enable all breakpoints again
