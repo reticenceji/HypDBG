@@ -3,9 +3,11 @@ import sys, traceback, struct, array, bisect, os, signal, runpy
 from construct import *
 from enum import Enum, IntEnum, IntFlag
 
+from .proxyutils import ProxyUtils
+
 from .asm import ARMAsm
 from .tgtypes import *
-from .proxy import IODEV, START, EVENT, EXC, EXC_RET, ExcInfo
+from .proxy import IODEV, START, EVENT, EXC, EXC_RET, ExcInfo, M1N1Proxy, UartInterface
 from .utils import *
 from .sysreg import *
 from .macho import MachO
@@ -116,7 +118,7 @@ class HV(Reloadable):
     AIC_EVT_TYPE_HW = 1
     IRQTRACE_IRQ = 1
 
-    def __init__(self, iface, proxy, utils):
+    def __init__(self, iface: UartInterface, proxy: M1N1Proxy, utils: ProxyUtils):
         self.iface = iface
         self.p = proxy
         self.u = utils
@@ -149,6 +151,8 @@ class HV(Reloadable):
         self.started = False
         self.ctx = None
         self.hvcall_handlers = {}
+        self.sw_breakpoints = {}
+        self.current_sw_breakpoint = None
 
     def _reloadme(self):
         super()._reloadme()
@@ -723,7 +727,7 @@ class HV(Reloadable):
         # not sure why MDSCR_EL1.SS needs to be disabled here but otherwise
         # if also SPSR.SS=0 no instruction will be executed after eret
         # and instead a debug exception is generated again
-        print("STEPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
+        print("STEPP")
         self.u.msr(MDSCR_EL1, MDSCR(MDE=1).value)
 
         # enable all breakpoints again
@@ -731,7 +735,9 @@ class HV(Reloadable):
             if vaddr is None:
                 continue
             self.u.msr(DBGBCRn_EL1(i), DBGBCR(E=1, PMC=0b11, BAS=0xf).value)
-
+        if self.current_sw_breakpoint is not None:
+            self.p.write32(self.current_sw_breakpoint , 0xd4284840)
+            self.current_sw_breakpoint = None
         if not self._stepping:
             return True
         self._stepping = False
@@ -748,6 +754,26 @@ class HV(Reloadable):
     def add_hvcall(self, callid, handler):
         self.hvcall_handlers[callid] = handler
 
+    def get_register(self, number=None):
+        if number is None:
+            for i in range(0,32):
+                print(f"x{i} = 0x{self.ctx.regs[i]:016x}")
+        else:
+            print(f"x{number} = 0x{self.ctx.regs[number]:016x}")
+
+    def set_register(self, number, value):
+        self.ctx.regs[number] = value
+
+    def sync_change(self, addr):
+        self.u.exec(f"""
+        LDR X1, ={addr}
+        DC CVAU, X1
+        DSB ISH
+        IC IVAU, X1
+        DSB ISH
+        ISB
+        """)
+
     def handle_brk(self, ctx):
         iss = ctx.esr.ISS
         if iss != 0x4242:
@@ -757,7 +783,13 @@ class HV(Reloadable):
         callid = ctx.regs[0]
         handler = self.hvcall_handlers.get(callid, None)
         if handler is None:
+            # we'll need to single step to enable these breakpoints again
             self.log(f"Undefined HV call #{callid}")
+            self.u.msr(MDSCR_EL1, MDSCR(SS=1, MDE=1).value)
+            self.ctx.spsr.SS = 1
+            self.current_sw_breakpoint = self.ctx.elr_phys
+            self.p.write32(self.current_sw_breakpoint, self.sw_breakpoints[self.current_sw_breakpoint])
+            self.sync_change(self.current_sw_breakpoint)
             return False
 
         ok = handler(ctx)
@@ -950,6 +982,27 @@ class HV(Reloadable):
 
     def remove_sym_bp(self, name):
         return self.remove_hw_bp(self.resolve_symbol(name))
+
+    def add_sw_bp(self, vaddr):
+        # By Ji
+        paddr = self.p.hv_translate(vaddr)
+        if paddr in self.sw_breakpoints:
+            print("Software breakpoint already set")
+            return
+        self.sw_breakpoints[paddr] = self.p.read32(paddr)
+        self.p.write32(paddr, 0xd4284840) # BRK 0x4242
+
+    def remove_sw_bp(self, vaddr):
+        # By Ji
+        paddr = self.p.hv_translate(vaddr)
+        if paddr not in self.sw_breakpoints:
+            print("Software breakpoint not set")
+        origin_instruction = self.sw_breakpoints.pop(paddr)
+        self.p.write32(paddr, origin_instruction)
+        if paddr == self.current_sw_breakpoint:
+            self.current_sw_breakpoint = None
+        
+
 
     def exit(self):
         raise shell.ExitConsole(EXC_RET.EXIT_GUEST)

@@ -33,6 +33,9 @@ hv = HV(iface, p, u)
 
 hv.hook_exceptions = args.hook_exceptions
 
+sys.ps1 = "(hdb) "
+sys.ps2 = ""
+
 hv.init()
 
 if args.cpus:

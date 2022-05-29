@@ -822,11 +822,6 @@ class M1N1Proxy(Reloadable):
         return self.request(self.P_WRITEREAD16, addr, data)
     def writeread8(self, addr, data):
         return self.request(self.P_WRITEREAD8, addr, data)
-    def bp(self, addr):
-        '''set a breakpoint on guest virtual address'''
-        addr = (addr | 3) - 3
-        return self.request(self.P_BKPT, addr);
-
     def memcpy64(self, dst, src, size):
         if src & 7 or dst & 7:
             raise AlignmentError()

@@ -9,7 +9,6 @@ from .proxyutils import *
 from .utils import *
 from . import sysreg
 from inspect import isfunction, signature
-from .debugger import debugger
 
 __all__ = ["ExitConsole", "run_shell"]
 
@@ -21,6 +20,7 @@ class HistoryConsole(code.InteractiveConsole):
         self.init_history(histfile)
 
     def init_history(self, histfile):
+        readline.set_completer(rlcompleter.Completer(self.locals).complete)
         readline.parse_and_bind("tab: complete")
         if hasattr(readline, "read_history_file"):
             try:
@@ -116,10 +116,9 @@ def help_cmd(arg=None):
         else:
             print("%s:\n             %s" % (cmd, msg))
 
-#locals is a dictionary for constructing the
+# locals is a dictionary for constructing the
 # InteractiveConsole with. It adds in the callables
 # in proxy utils iface and sysreg into locals
-@debugger
 def run_shell(locals, msg=None, exitmsg=None):
     saved_display = sys.displayhook
     try:
@@ -143,7 +142,7 @@ def run_shell(locals, msg=None, exitmsg=None):
         if "utils" in locals and "u" not in locals:
             locals["u"] = locals["utils"]
 
-        for obj_name in ("iface", "p", "u"):
+        for obj_name in ("iface", "p", "u", "hv"):
             obj = locals.get(obj_name)
             obj_class = type(obj)
             if obj is None:

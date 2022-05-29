@@ -62,7 +62,7 @@ void hv_exc_proxy(struct exc_info *ctx, uartproxy_boot_reason_t reason, u32 type
         .info = ctx,
     };
     
-    print_regs(ctx->regs, 0);
+    // print_regs(ctx->regs, 0);
 
     hv_wdt_suspend();
     int ret = uartproxy_run(&start);
